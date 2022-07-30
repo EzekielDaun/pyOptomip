@@ -20,16 +20,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+
 class logWriter(object):
     def __init__(self, log):
         self.log = log
-        
+
     def write(self, message):
         self.log.outputlog.AppendText(message)
-        
+
+
 class logWriterError(object):
     def __init__(self, log):
         self.log = log
-        
+
     def write(self, message):
         self.log.outputlog.AppendText(message)

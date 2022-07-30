@@ -24,77 +24,78 @@ import wx
 from ctypes import byref, c_float
 from wx.lib.activex import ActiveXCtrl
 
+
 class MGMotorCtrl(ActiveXCtrl):
-    def __init__(self, parent, COM_id, serialNum, name='Thorlabs Motor'):
+    def __init__(self, parent, COM_id, serialNum, name="Thorlabs Motor"):
         wx.lib.activex.ActiveXCtrl.__init__(self, parent, COM_id, name=name)
         self.ctrl.HWSerialNum = serialNum
         self.ctrl.StartCtrl()
         self.chan = 0
-            
+
     def getPosition(self):
         pos = c_float()
         res = self.ctrl.GetPosition(self.chan, byref(pos))
         self.checkError(res)
-        return float(pos.value)*1000
-        
+        return float(pos.value) * 1000
+
     def moveRelative(self, offset, wait=True):
-        res = self.ctrl.SetRelMoveDist(self.chan, offset/1000.0)
+        res = self.ctrl.SetRelMoveDist(self.chan, offset / 1000.0)
         self.checkError(res)
         res = self.ctrl.MoveRelative(self.chan, wait)
         self.checkError(res)
-       
+
     def moveAbsolute(self, offset, wait=True):
-        res = self.ctrl.SetAbsMovePos(self.chan, offset/1000.0)
+        res = self.ctrl.SetAbsMovePos(self.chan, offset / 1000.0)
         self.checkError(res)
         res = self.ctrl.MoveAbsolute(self.chan, wait)
         self.checkError(res)
-       
+
     def setVelocityParams(self, minVel, maxVel, accel):
         res = self.ctrl.SetVelParams(minVel, accel, maxVel)
         self.checkError(res)
-    
+
     def checkError(self, err):
         if err == 0:
             return
         else:
             raise Exception("An error occurred")
 
+
 class MGMotor(object):
-    name = 'Thorlabs BBD203'
-    isMotor=True
-    isLaser=False
-        
+    name = "Thorlabs BBD203"
+    isMotor = True
+    isLaser = False
+
     def __init__(self, serialNum):
-        self.COM_id = 'MGMOTOR.MGMotorCtrl.1'
+        self.COM_id = "MGMOTOR.MGMotorCtrl.1"
         self.motorLst = list()
-        self.frame = wx.Frame(None, -1, title='Thorlabs Motor Control')
+        self.frame = wx.Frame(None, -1, title="Thorlabs Motor Control")
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         for num in serialNum:
             motor = MGMotorCtrl(self.frame, self.COM_id, serialNum=num)
             hbox.Add(motor, proportion=1, flag=wx.EXPAND)
             self.motorLst.append(motor)
-        
+
         self.xMotor = self.motorLst[0]
         self.yMotor = self.motorLst[1]
-    
+
         self.frame.SetSizer(hbox)
         self.frame.Show()
-        
+
     def moveRelative(self, dx, dy):
         self.xMotor.moveRelative(dx)
         self.yMotor.moveRelative(dy)
-        
+
     def moveAbsoluteXY(self, x, y):
         self.xMotor.moveAbsolute(x)
         self.yMotor.moveAbsolute(y)
-        
+
     def getPosition(self):
         xpos = self.xMotor.getPosition()
         ypos = self.yMotor.getPosition()
-        return (xpos, ypos)  
-        
+        return (xpos, ypos)
+
     def disconnect(self):
         for motor in self.motorLst:
             motor.Destroy()
         self.frame.Destroy()
-
