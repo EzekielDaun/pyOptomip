@@ -23,7 +23,8 @@
 # Version 1.1
 import math
 import numpy as np
-import hp816x_instr
+from hp816x_instr import hp816x
+from CorvusEco import CorvusEcoClass
 
 
 class fineAlign(object):
@@ -66,7 +67,7 @@ class fineAlign(object):
     DEVICE_NOT_FOUND = 1
     FINE_ALIGN_ABORTED = 2
 
-    def __init__(self, laser, stage):
+    def __init__(self, laser:hp816x, stage:CorvusEcoClass):
         self.laser = laser
         self.stage = stage
 
