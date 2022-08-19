@@ -1,6 +1,6 @@
 import os
+import sys
 import platform
-from typing import cast
 from ctypes import (
     POINTER,
     byref,
@@ -41,6 +41,7 @@ class Hp816xModel(IntEnum):
     HP8163AB = auto()
     HP8164AB = auto()
     HP8166AB = auto()
+    N7744xA = auto()
 
 
 # Slot info
@@ -430,19 +431,13 @@ class InstrumentError(RuntimeError):
 
 
 class Hp816xDriver(object):
-
     # Load hp816x_32.dll/hp816x_64.dll
     if not platform.system() == "Windows":
         raise NotImplementedError("This module support Windows only")
-
-    __dll = WinDLL(
-        os.path.abspath(
-            os.path.join(
-                os.path.dirname(__file__),
-                f"hp816x_{int(platform.architecture()[0][0:2])}.dll",
-            )
-        )
-    )
+    for p in os.getenv("PATH").split(";"):
+        if os.path.isdir(p):
+            os.add_dll_directory(os.path.abspath(p))
+    __dll = WinDLL(f"hp816x_{int(platform.architecture()[0][0:2])}.dll")
 
     # Function prototype declarations
     # Output string are ViAChar, input strings are ViString
@@ -559,8 +554,8 @@ class Hp816xDriver(object):
     __dll.hp816x_opc_Q.argtypes = [ViSession, ViPBoolean]
     __dll.hp816x_opc_Q.restype = ViStatus
 
-    __dll.hp816x_lockUnlockInstrument.argtypes = [ViSession, ViBoolean, ViString]
-    __dll.hp816x_lockUnlockInstrument.restype = ViStatus
+    __dll.hp816x_lockUnlockInstument.argtypes = [ViSession, ViBoolean, ViString]
+    __dll.hp816x_lockUnlockInstument.restype = ViStatus
 
     __dll.hp816x_getLockState.argtypes = [ViSession]
     __dll.hp816x_getLockState.restype = ViStatus
@@ -645,7 +640,7 @@ class Hp816xDriver(object):
     ]
     __dll.hp816x_set_ATT_attenuation.restype = ViStatus
 
-    __dll.hp816x_get_ATT_attenuation.argtypes = [
+    __dll.hp816x_get_ATT_attenuation_Q.argtypes = [
         ViSession,
         ViInt32,
         ViPReal64,
@@ -771,8 +766,12 @@ class Hp816xDriver(object):
     __dll.hp816x_set_ATT_shutterAtPowerOn.argtypes = [ViSession, ViInt32, ViBoolean]
     __dll.hp816x_set_ATT_shutterAtPowerOn.restype = ViStatus
 
-    __dll.hp816x_get_ATT_shutterAtPowerOn_Q.argtypes = [ViSession, ViInt32, ViPBoolean]
-    __dll.hp816x_get_ATT_shutterAtPowerOn_Q.restype = ViStatus
+    __dll.hp816x_get_ATT_shutterStateAtPowerOn_Q.argtypes = [
+        ViSession,
+        ViInt32,
+        ViPBoolean,
+    ]
+    __dll.hp816x_get_ATT_shutterStateAtPowerOn_Q.restype = ViStatus
 
     __dll.hp816x_get_ATT_operStatus.argtypes = [ViSession, ViInt32, ViPUInt32, ViAChar]
     __dll.hp816x_get_ATT_operStatus.restype = ViStatus
@@ -894,11 +893,11 @@ class Hp816xDriver(object):
     __dll.hp816x_get_ATT_avTime_Q.argtypes = [ViSession, ViInt32, ViPReal64]
     __dll.hp816x_get_ATT_avTime_Q.restype = ViStatus
 
-    __dll.hp816x_set_ATT_TriggerConfig.argtypes = [ViSession, ViInt32, ViInt32]
-    __dll.hp816x_set_ATT_TriggerConfig.restype = ViStatus
+    __dll.hp816x_set_ATT_triggerConfig.argtypes = [ViSession, ViInt32, ViInt32]
+    __dll.hp816x_set_ATT_triggerConfig.restype = ViStatus
 
-    __dll.hp816x_get_ATT_TriggerConfig_Q.argtypes = [ViSession, ViInt32, ViPInt32]
-    __dll.hp816x_get_ATT_TriggerConfig_Q.restype = ViStatus
+    __dll.hp816x_get_ATT_triggerConfig_Q.argtypes = [ViSession, ViInt32, ViPInt32]
+    __dll.hp816x_get_ATT_triggerConfig_Q.restype = ViStatus
 
     __dll.hp816x_zero_ATT_powermeter.argtypes = [ViSession, ViInt32]
     __dll.hp816x_zero_ATT_powermeter.restype = ViStatus
@@ -1099,14 +1098,14 @@ class Hp816xDriver(object):
     __dll.hp816x_PWM_fetchValue.argtypes = [ViSession, ViInt32, ViUInt32, ViPReal64]
     __dll.hp816x_PWM_fetchValue.restype = ViStatus
 
-    __dll.hp816x_readAll.argtypes = [
+    __dll.hp816x_PWM_readAll.argtypes = [
         ViSession,
         ViPUInt32,
         ViAInt32,
         ViAInt32,
         ViAReal64,
     ]
-    __dll.hp816x_readAll.restype = ViStatus
+    __dll.hp816x_PWM_readAll.restype = ViStatus
 
     __dll.hp816x_PWM_zeroing.argtypes = [ViSession, ViPInt32, ViInt32, ViInt32]
     __dll.hp816x_PWM_zeroing.restype = ViStatus
@@ -1155,7 +1154,7 @@ class Hp816xDriver(object):
     ]
     __dll.hp816x_set_PWM_stability.restype = ViStatus
 
-    __dll.hp816x_get_PWM_stability_Q.argtypes = [
+    __dll.hp816x_get_PWM_stabilityResults_Q.argtypes = [
         ViSession,
         ViInt32,
         ViInt32,
@@ -1164,7 +1163,7 @@ class Hp816xDriver(object):
         ViPBoolean,
         ViAReal64,
     ]
-    __dll.hp816x_get_PWM_stability_Q.restype = ViStatus
+    __dll.hp816x_get_PWM_stabilityResults_Q.restype = ViStatus
 
     __dll.hp816x_set_PWM_minMax.argtypes = [
         ViSession,
@@ -1260,7 +1259,7 @@ class Hp816xDriver(object):
     ]
     __dll.hp816x_set_FLS_modulation.restype = ViStatus
 
-    __dll.hp816x_get_FLS_modulation_Q.argtypes = [
+    __dll.hp816x_get_FLS_modulationSettings_Q.argtypes = [
         ViSession,
         ViInt32,
         ViInt32,
@@ -1271,7 +1270,7 @@ class Hp816xDriver(object):
         ViPReal64,
         ViPReal64,
     ]
-    __dll.hp816x_get_FLS_modulation_Q.restype = ViStatus
+    __dll.hp816x_get_FLS_modulationSettings_Q.restype = ViStatus
 
     __dll.hp816x_set_FLS_laserSource.argtypes = [ViSession, ViInt32, ViInt32]
     __dll.hp816x_set_FLS_laserSource.restype = ViStatus
@@ -1410,11 +1409,11 @@ class Hp816xDriver(object):
     __dll.hp816x_RLM_fetchValue.argtypes = [ViSession, ViInt32, ViBoolean, ViPReal64]
     __dll.hp816x_RLM_fetchValue.restype = ViStatus
 
-    __dll.hp816x_set_RLM_flReference.argtypes = [ViSession, ViInt32, ViReal64]
-    __dll.hp816x_set_RLM_flReference.restype = ViStatus
+    __dll.hp816x_set_RLM_rlReference.argtypes = [ViSession, ViInt32, ViReal64]
+    __dll.hp816x_set_RLM_rlReference.restype = ViStatus
 
-    __dll.hp816x_get_RLM_flReference_Q.argtypes = [ViSession, ViInt32, ViPReal64]
-    __dll.hp816x_get_RLM_flReference_Q.restype = ViStatus
+    __dll.hp816x_get_RLM_rlReference_Q.argtypes = [ViSession, ViInt32, ViPReal64]
+    __dll.hp816x_get_RLM_rlReference_Q.restype = ViStatus
 
     __dll.hp816x_set_RLM_FPDelta.argtypes = [ViSession, ViInt32, ViReal64]
     __dll.hp816x_set_RLM_FPDelta.restype = ViStatus
@@ -1660,8 +1659,8 @@ class Hp816xDriver(object):
     __dll.hp816x_get_TLS_laserState_Q.argtypes = [ViSession, ViInt32, ViPBoolean]
     __dll.hp816x_get_TLS_laserState_Q.restype = ViStatus
 
-    __dll.hp816x_set_TLSlaserRiseTime.argtypes = [ViSession, ViInt32, ViReal64]
-    __dll.hp816x_set_TLSlaserRiseTime.restype = ViStatus
+    __dll.hp816x_set_TLS_laserRiseTime.argtypes = [ViSession, ViInt32, ViReal64]
+    __dll.hp816x_set_TLS_laserRiseTime.restype = ViStatus
 
     __dll.hp816x_get_TLS_laserRiseTime.argtypes = [ViSession, ViInt32, ViPReal64]
     __dll.hp816x_get_TLS_laserRiseTime.restype = ViStatus
@@ -1828,13 +1827,13 @@ class Hp816xDriver(object):
     ]
     __dll.hp816x_set_TLS_SBS_control.restype = ViStatus
 
-    __dll.hp816x_get_TLS_SBS_control_Q.argtypes = [
+    __dll.hp816x_get_TLS_SBS_control_q.argtypes = [
         ViSession,
         ViInt32,
         ViPBoolean,
         ViPReal64,
     ]
-    __dll.hp816x_get_TLS_SBS_control_Q.restype = ViStatus
+    __dll.hp816x_get_TLS_SBS_control_q.restype = ViStatus
 
     __dll.hp816x_get_TLS_powerPoints_Q.argtypes = [ViSession, ViInt32, ViPInt32]
     __dll.hp816x_get_TLS_powerPoints_Q.restype = ViStatus
@@ -1854,15 +1853,15 @@ class Hp816xDriver(object):
     __dll.hp816x_get_TLS_lambdaLoggingState_Q.argtypes = [ViSession, ViPBoolean]
     __dll.hp816x_get_TLS_lambdaLoggingState_Q.restype = ViStatus
 
-    __dll.hp816x_set_TLS_lambdaLOggingStateEx.argtypes = [ViSession, ViInt32, ViBoolean]
-    __dll.hp816x_set_TLS_lambdaLOggingStateEx.restype = ViStatus
+    __dll.hp816x_set_TLS_lambdaLoggingStateEx.argtypes = [ViSession, ViInt32, ViBoolean]
+    __dll.hp816x_set_TLS_lambdaLoggingStateEx.restype = ViStatus
 
-    __dll.hp816x_get_TLS_lambdaLOggingStateEx_Q.argtypes = [
+    __dll.hp816x_get_TLS_lambdaLoggingStateEx_Q.argtypes = [
         ViSession,
         ViInt32,
         ViPBoolean,
     ]
-    __dll.hp816x_get_TLS_lambdaLOggingStateEx_Q.restype = ViStatus
+    __dll.hp816x_get_TLS_lambdaLoggingStateEx_Q.restype = ViStatus
 
     __dll.hp816x_get_TLS_wavelengthPoints_Q.argtypes = [ViSession, ViPInt32]
     __dll.hp816x_get_TLS_wavelengthPoints_Q.restype = ViStatus
@@ -1961,8 +1960,8 @@ class Hp816xDriver(object):
     ]
     __dll.hp816x_getMFLambdaScanParameters_Q.restype = ViStatus
 
-    __dll.hp816x_executeMFLambdaScan.argtypes = [ViSession, ViAReal64]
-    __dll.hp816x_executeMFLambdaScan.restype = ViStatus
+    __dll.hp816x_executeMfLambdaScan.argtypes = [ViSession, ViAReal64]
+    __dll.hp816x_executeMfLambdaScan.restype = ViStatus
 
     __dll.hp816x_getLambdaScanResult.argtypes = [
         ViSession,
@@ -1974,17 +1973,17 @@ class Hp816xDriver(object):
     ]
     __dll.hp816x_getLambdaScanResult.restype = ViStatus
 
-    __dll.getNoOfRegPWMChannels_Q.argtypes = [ViSession, ViPUInt32]
-    __dll.getNoOfRegPWMChannels_Q.restype = ViStatus
+    __dll.hp816x_getNoOfRegPWMChannels_Q.argtypes = [ViSession, ViPUInt32]
+    __dll.hp816x_getNoOfRegPWMChannels_Q.restype = ViStatus
 
-    __dll.getChannelLocation.argtypes = [
+    __dll.hp816x_getChannelLocation.argtypes = [
         ViSession,
         ViInt32,
         ViPInt32,
         ViPInt32,
         ViPInt32,
     ]
-    __dll.getChannelLocation.restype = ViStatus
+    __dll.hp816x_getChannelLocation.restype = ViStatus
 
     __dll.hp816x_excludeChannel.argtypes = [ViSession, ViInt32]
     __dll.hp816x_excludeChannel.restype = ViStatus
@@ -2009,9 +2008,24 @@ class Hp816xDriver(object):
         self.__handle = ViSession()
         self.__check_error(
             self.__dll.hp816x_init(
-                resourceName.encode("ascii"), IDQuery, reset, byref(self.__handle)
+                resourceName.encode("ascii"),
+                bool(IDQuery),
+                bool(reset),
+                byref(self.__handle),
             )
         )
+
+    @property
+    def handle(self):
+        return self.__handle
+
+    @classmethod
+    def init(cls, resourceName: str, IDQuery: bool, reset: bool):
+        ihandle = ViSession()
+        cls.__dll.hp816x_init(
+            resourceName.encode("ascii"), IDQuery, reset, byref(ihandle)
+        )
+        return ihandle
 
     def close(self):
         self.__check_error(self.__dll.hp816x_close(self.__handle))
@@ -2058,9 +2072,7 @@ class Hp816xDriver(object):
         return self_testResult.value, self_test_Message.value.decode("ascii")
 
     def timeOut(self, timeout: int):
-        self.__check_error(
-            self.__dll.hp816x_timeOut(self.__handle, cast(ViInt32, timeout))
-        )
+        self.__check_error(self.__dll.hp816x_timeOut(self.__handle, timeout))
 
     def timeOut_Q(self):
         timeout = ViInt32()
@@ -2117,9 +2129,7 @@ class Hp816xDriver(object):
 
     def errorQueryDetect(self, automaticErrorDetection: bool):
         self.__check_error(
-            self.__dll.hp816x_errorQueryDetect(
-                self.__handle, cast(ViBoolean, automaticErrorDetection)
-            )
+            self.__dll.hp816x_errorQueryDetect(self.__handle, automaticErrorDetection)
         )
 
     def dbmToWatt(self, dbm: float):
@@ -2264,9 +2274,9 @@ class Hp816xDriver(object):
         )
         return bool(operationComplete.value)
 
-    def lockUnlockInstruments(self, softlock: bool, password: str):
+    def lockUnlockInstument(self, softlock: bool, password: str):
         self.__check_error(
-            self.__dll.hp816x_lockUnlockInstruments(
+            self.__dll.hp816x_lockUnlockInstument(
                 self.__handle, softlock, password.encode("ascii")
             )
         )
@@ -2293,15 +2303,17 @@ class Hp816xDriver(object):
             arraySize = ViInt32(5)
         elif self.__model_name == Hp816xModel.HP8166AB:
             arraySize = ViInt32(18)
+        elif self.__model_name == Hp816xModel.N7744xA:
+            arraySize = ViInt32(4)
         else:
             raise RuntimeError("Unsupported hp816x model")
         slotInformation = (ViInt32 * arraySize.value)()
         self.__check_error(
             self.__dll.hp816x_getSlotInformation_Q(
-                self.__handle, byref(arraySize), slotInformation
+                self.__handle, arraySize, slotInformation
             )
         )
-        return [Hp816xSlot(x) for x in slotInformation]
+        return [Hp816xSlot(x.value) for x in slotInformation]
 
     def getModuleStatus_Q(self):
         statusSummary = ViBoolean()
@@ -2324,7 +2336,7 @@ class Hp816xDriver(object):
         )
         return (
             bool(statusSummary.value),
-            [x for x in moduleStatusArray],
+            [x.value for x in moduleStatusArray],
             maxMessageLength.value,
         )
 
@@ -2681,10 +2693,10 @@ class Hp816xDriver(object):
             self.__dll.hp816x_set_ATT_shutterState(self.__handle, ATTSlot, shutterState)
         )
 
-    def get_ATT_shutterAtPowerOn_Q(self, ATTSlot: int):
+    def get_ATT_shutterStateAtPowerOn_Q(self, ATTSlot: int):
         shutterState = ViBoolean()
         self.__check_error(
-            self.__dll.hp816x_get_ATT_shutterAtPowerOn_Q(
+            self.__dll.hp816x_get_ATT_shutterStateAtPowerOn_Q(
                 self.__handle, ATTSlot, byref(shutterState)
             )
         )
@@ -2782,7 +2794,7 @@ class Hp816xDriver(object):
                 self.__handle, ATTSlot, wavelengthArray, offsetArray
             )
         )
-        return [x for x in wavelengthArray], [x for x in offsetArray]
+        return [x.value for x in wavelengthArray], [x.value for x in offsetArray]
 
     def get_ATT_offsetTblSize_Q(self, ATTSlot: int):
         currentSize = ViUInt32()
@@ -2799,7 +2811,7 @@ class Hp816xDriver(object):
         self.__check_error(
             self.__dll.hp816x_read_ATT_outputPower(self.__handle, ATTSlot, Output_Power)
         )
-        return [x for x in Output_Power]
+        return [x.value for x in Output_Power]
 
     def fetch_ATT_outputPower(self, ATTSlot: int):
         Output_Power = (ViReal64 * DEFAULT_MSG_BUFFER_SIZE)()
@@ -2808,7 +2820,7 @@ class Hp816xDriver(object):
                 self.__handle, ATTSlot, Output_Power
             )
         )
-        return [x for x in Output_Power]
+        return [x.value for x in Output_Power]
 
     def set_ATT_powerOffset(self, ATTSlot: int, selection: Hp816xSelect, offset: float):
         self.__check_error(
@@ -2878,17 +2890,17 @@ class Hp816xDriver(object):
         )
         return averagingTime.value
 
-    def set_ATT_TriggerConfig(self, ATT_Slot: int, Trigger_In: Hp816xPWMTrigIn):
+    def set_ATT_triggerConfig(self, ATT_Slot: int, Trigger_In: Hp816xPWMTrigIn):
         self.__check_error(
-            self.__dll.hp816x_set_ATT_TriggerConfig(
+            self.__dll.hp816x_set_ATT_triggerConfig(
                 self.__handle, ATT_Slot, Trigger_In.value
             )
         )
 
-    def get_ATT_TriggerConfig_Q(self, ATT_Slot: int):
+    def get_ATT_triggerConfig_Q(self, ATT_Slot: int):
         Trigger_In = ViInt32()
         self.__check_error(
-            self.__dll.hp816x_get_ATT_TriggerConfig_Q(
+            self.__dll.hp816x_get_ATT_triggerConfig_Q(
                 self.__handle, ATT_Slot, byref(Trigger_In)
             )
         )
@@ -2930,8 +2942,8 @@ class Hp816xDriver(object):
                 status, additional_info=Error_Diagnose.value.decode("ascii")
             )
         return (
-            [x for x in Wavelength],
-            [x for x in Power],
+            [x.value for x in Wavelength],
+            [x.value for x in Power],
             Wavelength_Result.value,
         )
 
@@ -2953,7 +2965,7 @@ class Hp816xDriver(object):
                 self.__handle, ATT_Slot, size, Wavelength, Response_Factor
             )
         )
-        return [x for x in Wavelength], [x for x in Response_Factor]
+        return [x.value for x in Wavelength], [x.value for x in Response_Factor]
 
     def readWlRepTblCSV(self, ATT_Slot: int, size: int):
         CSV_List = (ViChar * size)()
@@ -3292,9 +3304,9 @@ class Hp816xDriver(object):
         )
         return (
             Number_of_Channels.value,
-            [x for x in Slots],
-            [Hp816xChan(x) for x in Channels],
-            [x for x in Values],
+            [x.value for x in Slots],
+            [Hp816xChan(x.value) for x in Channels],
+            [x.value for x in Values],
         )
 
     def PWM_zeroing(self, PWMSlot: int, channelNumber: Hp816xChan):
@@ -3371,7 +3383,7 @@ class Hp816xDriver(object):
                 loggingResult,
             )
         )
-        return bool(loggingStatus.value), [x for x in loggingResult]
+        return bool(loggingStatus.value), [x.value for x in loggingResult]
 
     def set_PWM_stability(
         self,
@@ -3395,7 +3407,7 @@ class Hp816xDriver(object):
         )
         return estimatedResults.value
 
-    def get_PWM_stability_Q(
+    def get_PWM_stabilityResults_Q(
         self,
         PWMSlot: int,
         channelNumber: Hp816xChan,
@@ -3406,7 +3418,7 @@ class Hp816xDriver(object):
         stabilityStatus = ViBoolean()
         stabilityResult = (ViReal64 * size)()
         self.__check_error(
-            self.__dll.hp816x_get_PWM_stability_Q(
+            self.__dll.hp816x_get_PWM_stabilityResults_Q(
                 self.__handle,
                 PWMSlot,
                 channelNumber.value,
@@ -3416,7 +3428,7 @@ class Hp816xDriver(object):
                 stabilityResult,
             )
         )
-        return bool(stabilityStatus.value), [x for x in stabilityResult]
+        return bool(stabilityStatus.value), [x.value for x in stabilityResult]
 
     def set_PWM_minMax(
         self,
@@ -3505,7 +3517,7 @@ class Hp816xDriver(object):
                 self.__handle, Slot, channelNumber.value, wl, pw
             )
         )
-        return [x for x in wl], [x for x in pw]
+        return [x.value for x in wl], [x.value for x in pw]
 
     def readWlRepTblCSV_Ex(self, Slot: int, channelNumber: Hp816xChan, size: int):
         CSV_List = (ViChar * size)()
@@ -3598,7 +3610,9 @@ class Hp816xDriver(object):
             )
         )
 
-    def get_FLS_modulation_Q(self, FLSSLot: int, wavelengthSource: Hp816xSource):
+    def get_FLS_modulationSettings_Q(
+        self, FLSSLot: int, wavelengthSource: Hp816xSource
+    ):
         modulationState = ViBoolean()
         modulationSource = ViInt32()
         minimumFrequency = ViReal64()
@@ -3606,7 +3620,7 @@ class Hp816xDriver(object):
         defaultFrequency = ViReal64()
         currentFrequency = ViReal64()
         self.__check_error(
-            self.__dll.hp816x_get_FLS_modulation_Q(
+            self.__dll.hp816x_get_FLS_modulationSettings_Q(
                 self.__handle,
                 FLSSLot,
                 wavelengthSource.value,
@@ -3939,15 +3953,15 @@ class Hp816xDriver(object):
 
     def set_RLM_rlReference(self, RLMSlot: int, returnLossReference: float):
         self.__check_error(
-            self.__dll.hp816x_set_RLM_flReference(
+            self.__dll.hp816x_set_RLM_rlReference(
                 self.__handle, RLMSlot, returnLossReference
             )
         )
 
-    def get_RLM_flReference_Q(self, RLMSlot: int):
+    def get_RLM_rlReference_Q(self, RLMSlot: int):
         returnLossReference = ViReal64()
         self.__check_error(
-            self.__dll.hp816x_get_RLM_flReference_Q(
+            self.__dll.hp816x_get_RLM_rlReference_Q(
                 self.__handle, RLMSlot, byref(returnLossReference)
             )
         )
@@ -4145,7 +4159,7 @@ class Hp816xDriver(object):
                 loggingResult,
             )
         )
-        return bool(loggingStatus.value), list(loggingResult)
+        return bool(loggingStatus.value), [x.value for x in loggingResult]
 
     def set_RLM_stability(
         self, RLMSlot: int, averagingTime: float, periodTime: float, totalTime: float
@@ -4182,7 +4196,7 @@ class Hp816xDriver(object):
                 stabilityResult,
             )
         )
-        return bool(stabilityStatus.value), list(stabilityResult)
+        return bool(stabilityStatus.value), [x.value for x in stabilityResult]
 
     def set_RLM_minMax(
         self,
@@ -4404,7 +4418,7 @@ class Hp816xDriver(object):
     ):
         self.__check_error(
             self.__dll.hp816x_set_TLS_triggerConfiguration(
-                self.__handle, triggerIn.value, triggerOut.value
+                self.__handle, TLSSlot, triggerIn.value, triggerOut.value
             )
         )
 
@@ -4413,7 +4427,7 @@ class Hp816xDriver(object):
         triggerOut = ViInt32()
         self.__check_error(
             self.__dll.hp816x_get_TLS_triggerConfiguration(
-                self.__handle, byref(triggerIn), byref(triggerOut)
+                self.__handle, TLSSlot, byref(triggerIn), byref(triggerOut)
             )
         )
         return Hp816xTLSTriggerIn(triggerIn.value), Hp816xTLSTriggerOut(
@@ -4703,11 +4717,11 @@ class Hp816xDriver(object):
             )
         )
 
-    def get_TLS_SBS_control_Q(self, TLSSlot: int):
+    def get_TLS_SBS_control_q(self, TLSSlot: int):
         modState = ViBoolean()
         frequency = ViReal64()
         self.__check_error(
-            self.__dll.hp816x_get_TLS_SBS_control_Q(
+            self.__dll.hp816x_get_TLS_SBS_control_q(
                 self.__handle, TLSSlot, byref(modState), byref(frequency)
             )
         )
@@ -4730,7 +4744,7 @@ class Hp816xDriver(object):
                 self.__handle, TLSSlot, numberofDataItems, wavelengthData, powerData
             )
         )
-        return list(wavelengthData), list(powerData)
+        return [x.value for x in wavelengthData], [x.value for x in powerData]
 
     def set_TLS_lambdaLoggingState(self, lambdaLoggingState: bool):
         self.__check_error(
@@ -4789,7 +4803,7 @@ class Hp816xDriver(object):
                 self.__handle, arraySize, wavelengthData
             )
         )
-        return list(wavelengthData)
+        return [x.value for x in wavelengthData]
 
     def get_TLS_wvelengthDataEx_Q(self, TLSSlot: int, arraySize: int, size: int):
         wavelengthData = (ViReal64 * size)()
@@ -4798,7 +4812,7 @@ class Hp816xDriver(object):
                 self.__handle, TLSSlot, arraySize, wavelengthData
             )
         )
-        return list(wavelengthData)
+        return [x.value for x in wavelengthData]
 
     def set_LambdaScan_wavelength(self, powerMeterWavelength: float):
         self.__check_error(
@@ -4889,15 +4903,15 @@ class Hp816xDriver(object):
             )
         )
         return (
-            list(wavelengthArray),
-            list(powerArray1),
-            list(powerArray2),
-            list(powerArray3),
-            list(powerArray4),
-            list(powerArray5),
-            list(powerArray6),
-            list(powerArray7),
-            list(powerArray8),
+            [x.value for x in wavelengthArray],
+            [x.value for x in powerArray1],
+            [x.value for x in powerArray2],
+            [x.value for x in powerArray3],
+            [x.value for x in powerArray4],
+            [x.value for x in powerArray5],
+            [x.value for x in powerArray6],
+            [x.value for x in powerArray7],
+            [x.value for x in powerArray8],
         )
 
     def returnEquidistantData(self, equallySpacedDatapoints: bool):
@@ -4907,11 +4921,13 @@ class Hp816xDriver(object):
             )
         )
 
-    def registerMainframe(self):
-        self.__check_error(self.__dll.hp816x_registerMainframe(self.__handle))
+    @classmethod
+    def registerMainframe(cls, ihandle: ViSession):
+        cls.__dll.hp816x_registerMainframe(ihandle)
 
-    def unregisterMainframe(self):
-        self.__check_error(self.__dll.hp816x_unregisterMainframe(self.__handle))
+    @classmethod
+    def unregisterMainframe(cls, ihandle: ViSession):
+        cls.__dll.hp816x_unregisterMainframe(ihandle)
 
     def setSweepSpeed(self, Sweep_Speed: Hp816xSweepSpeed):
         self.__check_error(
@@ -4974,7 +4990,7 @@ class Hp816xDriver(object):
         self.__check_error(
             self.__dll.hp816x_executeMfLambdaScan(self.__handle, wavelengthArray)
         )
-        return list(wavelengthArray)
+        return [x.value for x in wavelengthArray]
 
     def getLambdaScanResult(
         self, PWMChannel: int, cliptoLimit: bool, clippingLimit: float, size: int
@@ -4991,7 +5007,7 @@ class Hp816xDriver(object):
                 lambdaArray,
             )
         )
-        return list(powerArray), list(lambdaArray)
+        return [x.value for x in powerArray], [x.value for x in lambdaArray]
 
     def getNoOfRegPWMChannels_Q(self):
         numberofPWMChannels = ViUInt32()
