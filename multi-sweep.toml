@@ -1,0 +1,13 @@
+# Sample multi-sweep configuration file
+
+# name = "experiment-1"                            # unused for now
+# base-folder = "~/path/to/experiment/" # folder to save the results
+# number-of-scans = 5000                            #This affects how long the program runs for.
+# [laser]
+# with-n77 = true
+# is-oband = false
+# [range]
+# start = 1520e-9 # sweeping start wavelength
+# stop = 1570e-9  # sweeping stop wavelength
+# [fine-align]
+# frequency = 30 # fine align per {frequency} sweeps

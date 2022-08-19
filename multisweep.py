@@ -6,8 +6,10 @@
 
 from typing import Optional, Union
 
+import os
 import time
 import csv
+import toml
 
 import pyvisa as visa
 import numpy as np
@@ -19,33 +21,6 @@ from hp816x_instr import hp816x
 from hp816x_N77Det_instr import hp816x_N77Det
 from fineAlign import fineAlign
 from CorvusEco import CorvusEcoClass
-
-
-laser: Optional[Union[hp816x, hp816x_N77Det]] = None
-
-N77 = 1
-OBand = 0
-if N77 == 1:
-    laser = hp816x_N77Det()
-    if OBand:
-        laser.connect(
-            "GPIB0::22::INSTR",
-            "TCPIP0::100.65.11.185::inst0::INSTR",
-            reset=0,
-            forceTrans=1,
-        )  # OBand
-    else:
-        laser.connect(
-            "GPIB0::20::INSTR",
-            "TCPIP0::100.65.11.185::inst0::INSTR",
-            reset=0,
-            forceTrans=1,
-        )  # CBand
-
-
-if N77 == 0:
-    laser = hp816x()
-    laser.connect("GPIB0::20::INSTR", reset=0, forceTrans=1)  # CBand
 
 
 def calc_slice_indices(wavelength, guess_wavelength, range):
@@ -119,7 +94,7 @@ def run_fine_align(laser, stage, optimum_wavelength=1560e-9):
         detChan = Align.laser.pwmSlotMap[det][1]
         power = Align.laser.readPWM(detSlot, detChan)
         print("Detector", det + 1, "Before fine align Power = ", power, "\n")
-    if N77 == 1:
+    if is_N77 == 1:
         N77detectorPriority = [0, 1, 2, 3]
         for det in N77detectorPriority:
             detSlot = Align.laser.N77pwmSlotMap[det][0]
@@ -138,7 +113,7 @@ def run_fine_align(laser, stage, optimum_wavelength=1560e-9):
         detChan = Align.laser.pwmSlotMap[det][1]
         power = Align.laser.readPWM(detSlot, detChan)
         print("Detector", det + 1, "After fine align Power = ", power, "\n")
-    if N77 == 1:
+    if is_N77 == 1:
         for det in N77detectorPriority:
             detSlot = Align.laser.N77pwmSlotMap[det][0]
             detChan = Align.laser.N77pwmSlotMap[det][1]
@@ -151,17 +126,50 @@ def run_fine_align(laser, stage, optimum_wavelength=1560e-9):
 ## Main script running here:
 
 if __name__ == "__main__":
+    # read configuration file
+    config = toml.load("multi-sweep.toml")
+
+    name = str(config["name"])
+    baseFolder = str(config["base-folder"])
+    start_wl = float(config["range"]["start"])
+    stop_wl = float(config["range"]["stop"])
+    fa_freq = int(config["fine-align"]["frequency"])
+    is_N77 = bool(config["laser"]["with-n77"])
+    is_OBand = bool(config["laser"]["is-oband"])
+    # Choosing the number of scans to preform. This affects how long the program runs for.
+    nbscan = config["number-of-scans"]
+
+    if not os.path.exists(baseFolder):
+        os.makedirs(baseFolder)
+
+    laser: Optional[Union[hp816x, hp816x_N77Det]] = None
+    if is_N77:
+        laser = hp816x_N77Det()
+        if is_OBand:
+            laser.connect(
+                "GPIB0::22::INSTR",
+                "TCPIP0::100.65.11.185::inst0::INSTR",
+                reset=0,
+                forceTrans=1,
+            )  # OBand
+        else:
+            laser.connect(
+                "GPIB0::20::INSTR",
+                "TCPIP0::100.65.11.185::inst0::INSTR",
+                reset=0,
+                forceTrans=1,
+            )  # CBand
+    else:
+        laser = hp816x()
+        laser.connect("GPIB0::20::INSTR", reset=0, forceTrans=1)  # CBand
 
     # Setting up part 1 of sweep parameters
-    central_wavelength = 1550e-9
-    sweep_range = 10e-9
+    central_wavelength = (start_wl + stop_wl) / 2
+    sweep_range = (stop_wl - start_wl) / 2
 
     ## Connecting to the laser
 
-    # laser = hp816x_instr.hp816x();
-    # laser.connect('GPIB0::20::INSTR', reset=0, forceTrans=1) ## This is the address of the GPIB cable we are using,from NI MAX
     time.sleep(6.0)  # gives the laser some time to connece
-    c = 299792458
     laser.setTLSState("on")
     # turn on laser
     laser.setAutorangeAll()
@@ -182,11 +190,6 @@ if __name__ == "__main__":
     laser.setAutorangeAll()
     laser.N77setAutorangeAll()
     laser.setTLSWavelength(central_wavelength)
-
-    # Settting the base folder- this is where sweeps will save into
-
-    # baseFolder = 'C:/Users/eric1/Google Drive/UBC/CBR/Vinny COVID Project/Dec9Trial2/'
-    baseFolder = "C:/Users/MapleLeafStage/Documents/Lauren/2022-08-11_ANT_Troubleshooting_BulkRI/"
 
     ## Setting up sweep parameters:
 
@@ -218,13 +221,12 @@ if __name__ == "__main__":
     # Change power units to dBm after sweep
     laser.setAutorangeAll()
     laser.N77setAutorangeAll()
-    # laser.setTLSWavelength = 1550e-9;
 
     # Getting the power channels from the sweep output
 
     power_chan1 = power[:, 0]
     power_chan2 = power[:, 1]
-    if N77 == 1:
+    if is_N77:
         power_chan3 = power[
             :, 2
         ]  # Seems like we could have multiple channels, this could be useful for future layouts.
@@ -233,7 +235,7 @@ if __name__ == "__main__":
         power_chan6 = power[:, 5]
         power_chan7 = power[:, 6]
         power_chan8 = power[:, 7]
-        if OBand == 1:
+        if is_OBand:
             power_chan9 = power[:, 8]
             power_chan10 = power[:, 9]
 
@@ -242,14 +244,14 @@ if __name__ == "__main__":
     plt.figure()
     plt.plot(wavelength * 1e9, power_chan1, "r", label="Power1")
     plt.plot(wavelength * 1e9, power_chan2, "g", label="Power2")
-    if N77 == 1:
+    if is_N77 == 1:
         plt.plot(wavelength * 1e9, power_chan3, "b", label="Power3")
         plt.plot(wavelength * 1e9, power_chan4, "c", label="Power4")
         plt.plot(wavelength * 1e9, power_chan5, "m", label="Power5")
         plt.plot(wavelength * 1e9, power_chan6, "y", label="Power6")
         plt.plot(wavelength * 1e9, power_chan7, "k", label="Power7")
         plt.plot(wavelength * 1e9, power_chan8, "r", label="Power8")
-        if OBand == 1:
+        if is_OBand == 1:
             plt.plot(wavelength * 1e9, power_chan9, "g", label="Power9")
             plt.plot(wavelength * 1e9, power_chan10, "b", label="Power10")
 
@@ -259,10 +261,6 @@ if __name__ == "__main__":
     plt.show()
 
     ## Getting into running multiple sweeps:
-
-    # Choosing the number of scans to preform. This affects how long the program runs for.
-
-    nbscan = 5000
 
     # get the initial time
     t0 = time.time()
@@ -286,14 +284,14 @@ if __name__ == "__main__":
 
         power_chan1 = power[:, 0]
         power_chan2 = power[:, 1]
-        if N77 == 1:
+        if is_N77 == 1:
             power_chan3 = power[:, 2]
             power_chan4 = power[:, 3]
             power_chan5 = power[:, 4]
             power_chan6 = power[:, 5]
             power_chan7 = power[:, 6]
             power_chan8 = power[:, 7]
-            if OBand == 1:
+            if is_OBand == 1:
                 power_chan9 = power[:, 8]
                 power_chan10 = power[:, 9]
 
@@ -301,31 +299,29 @@ if __name__ == "__main__":
 
         matDict["wavelength"] = wavelength
 
-        # matDict['power'] = power[:, 0];
-
         matDict["power"] = power
         matDict["power1"] = power_chan1
         matDict["power2"] = power_chan2
-        if N77 == 1:
+        if is_N77 == 1:
             matDict["power3"] = power_chan3
             matDict["power4"] = power_chan4
             matDict["power5"] = power_chan5
             matDict["power6"] = power_chan6
             matDict["power7"] = power_chan7
             matDict["power8"] = power_chan8
-            if OBand == 1:
+            if is_OBand == 1:
                 matDict["power9"] = power_chan9
                 matDict["power10"] = power_chan10
 
         savemat(baseFolder + matFilename, matDict)
 
         # Every n number of sweeps, do a fine align:
-        if i % 30 == 0 or i == 1:
+        if i % fa_freq == 0 or i == 1:
             fine_align_wavelength = find_optimum_wavelength(
                 matDict, guess_wavelength=central_wavelength, range=2e-9
             )
             run_fine_align(laser, Stage, optimum_wavelength=fine_align_wavelength)
-    # Change power units to dBm after sweep
+
     laser.setAutorangeAll()
     laser.N77setAutorangeAll()
     laser.setTLSWavelength(central_wavelength)
