@@ -10,6 +10,7 @@ from lib.hp816x_driver import (
     Hp816xNumberOfScans,
     Hp816xSlot,
     Hp816xChan,
+    Hp816xPWMRangeMode,
 )
 
 import logging
@@ -65,24 +66,41 @@ class LSIMainframe(MainframeBase):
                 for i, _ in enumerate(self.__n77_driver.getSlotInformation_Q())
             ]
 
-        # general settings
-        self.__power_unit = Hp816xPowerUnit.hp816x_PU_DBM
+        # other initialization settings
+        for s, c in self.__sensor_map:
+            self.__driver.set_PWM_powerRange(
+                s, c, Hp816xPWMRangeMode.hp816x_PWM_RANGE_AUTO, 0.0
+            )
+            self.__driver.set_PWM_powerUnit(s, c, Hp816xPowerUnit.hp816x_PU_DBM)
+        if self.__with_n77:
+            for s, c in self.__n77_sensor_map:
+                self.__n77_driver.set_PWM_powerRange(
+                    s, c, Hp816xPWMRangeMode.hp816x_PWM_RANGE_AUTO, 0.0
+                )
+                self.__n77_driver.set_PWM_powerUnit(s, c, Hp816xPowerUnit.hp816x_PU_DBM)
+
+    def __del__(self):
+        self.__driver.unregisterMainframe(self.__driver.handle)
+        if self.__with_n77:
+            self.__n77_driver.unregisterMainframe(self.__n77_driver.handle)
 
     # properties and methods for the abstract mainframe base class
     @property
-    def detector_number(self):
+    def detector_names(self):
         """
         returns how many detectors in this setup
         """
+        ret = [f"HP8164 Slot {i} Channel {c.name[-1]}" for i, c in self.__sensor_map]
         if self.__with_n77:
-            return len(self.__sensor_map) + len(self.__n77_sensor_map)
-        else:
-            return len(self.__sensor_map)
+            ret += [
+                f"N7744 Slot {i} Channel {c.name[-1]}" for i, c in self.__n77_sensor_map
+            ]
+        return ret
 
     def read(self, index: int) -> float:
-        if index >= self.detector_number:
+        if index >= len(self.detector_names):
             raise RuntimeError(
-                f"Index {index} out of range. There are only {self.detector_number} detectors."
+                f"Index {index} out of range. There are only {len(self.detector_names)} detectors."
             )
         elif index >= len(self.__sensor_map):
             return self.__n77_driver.PWM_readValue(
@@ -99,7 +117,7 @@ class LSIMainframe(MainframeBase):
         power: float,
         start_nm: int,
         end_nm: int,
-        step: float,
+        step_nm: float,
         speed: Hp816xSweepSpeed,
     ) -> tuple[list[list[float]], list[float]]:
         self.__driver.setSweepSpeed(speed)
@@ -108,15 +126,15 @@ class LSIMainframe(MainframeBase):
             float(power),
             Hp816xOpticalOutputMode.hp816x_HIGHPOW,
             Hp816xNumberOfScans.hp816x_NO_OF_SCANS_1,
-            self.detector_number,
+            len(self.detector_names),
             int(start_nm) * 1e-9,
             int(end_nm) * 1e-9,
-            float(step),
+            float(step_nm) * 1e-9,
         )
         self.__driver.executeMfLambdaScan(num_dp)
         return [
             self.__driver.getLambdaScanResult(x, True, -100, num_dp)[0]
-            for x in range(self.detector_number)
+            for x in range(len(self.detector_names))
         ], self.__driver.getLambdaScanResult(0, True, -100, num_dp)[1]
 
     # normal member methods

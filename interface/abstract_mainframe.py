@@ -5,7 +5,7 @@ from typing import Tuple
 class MainframeBase(ABC):
     @property
     @abstractmethod
-    def detector_number(self) -> int:
+    def detector_names(self) -> int:
         pass
 
     @abstractmethod
