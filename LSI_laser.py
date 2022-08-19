@@ -95,10 +95,17 @@ class LSIMainframe(MainframeBase):
     def enable_laser(self, on: bool):
         self.__driver.set_TLS_laserState(0, bool(on))
 
-    # normal member methods
-    def sweep(self):
+    def sweep(
+        self,
+        power: float,
+        start_nm: int,
+        end_nm: int,
+        step: float,
+        speed: Hp816xSweepSpeed,
+        scans: Hp816xNumberOfScans,
+    ) -> tuple[list[list[float]], list[float]]:
         self.__driver.setSweepSpeed(Hp816xSweepSpeed.hp816x_SPEED_5NM)
-
+        # TODO:
         num_dp, num_chan = self.__driver.prepareMfLambdaScan(
             self.__power_unit,
             0,
@@ -109,13 +116,13 @@ class LSIMainframe(MainframeBase):
             1570e-9,
             0.008e-9,
         )
-        print(num_dp, num_chan)
         self.__driver.executeMfLambdaScan(num_dp)
-
         return [
             self.__driver.getLambdaScanResult(x, True, -100, num_dp)[0]
             for x in range(self.detector_number)
-        ]
+        ], self.__driver.getLambdaScanResult(0, True, -100, num_dp)[1]
+
+    # normal member methods
 
 
 if __name__ == "__main__":
