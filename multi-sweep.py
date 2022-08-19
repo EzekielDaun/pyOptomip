@@ -130,7 +130,7 @@ if __name__ == "__main__":
     config = toml.load("multi-sweep.toml")
 
     name = str(config["name"])
-    baseFolder = str(config["base-folder"])
+    baseFolder = os.path.expanduser(str(config["base-folder"]))
     start_wl = float(config["range"]["start"])
     stop_wl = float(config["range"]["stop"])
     fa_freq = int(config["fine-align"]["frequency"])
@@ -274,7 +274,7 @@ if __name__ == "__main__":
 
         # save elapsed time to CSV
         csvFilename = "timeSteps.csv"
-        with open(baseFolder + csvFilename, "a") as f:
+        with open(os.path.join(baseFolder, csvFilename), "a") as f:
             writer = csv.writer(f)
             writer.writerow([i, matFilename, t_elapse])
 
@@ -313,7 +313,7 @@ if __name__ == "__main__":
                 matDict["power9"] = power_chan9
                 matDict["power10"] = power_chan10
 
-        savemat(baseFolder + matFilename, matDict)
+        savemat(os.path.join(baseFolder, matFilename), matDict)
 
         # Every n number of sweeps, do a fine align:
         if i % fa_freq == 0 or i == 1:

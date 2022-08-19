@@ -24,10 +24,9 @@ class LSIMainframe(MainframeBase):
         self,
         mainframe_addr: str,
         n77_addr: Optional[str] = None,
-        reset=False,
+        reset=True,
         forceTrans=True,
         autoErrorCheck=True,
-        powerUnit=Hp816xPowerUnit.hp816x_PU_DBM,
     ):
         logger.info(f"Initializing mainframe at {mainframe_addr}, N77 at {n77_addr}")
         temp: str = Hp816xDriver.getInstrumentId_Q(mainframe_addr)
@@ -67,7 +66,7 @@ class LSIMainframe(MainframeBase):
             ]
 
         # general settings
-        self.__power_unit = powerUnit
+        self.__power_unit = Hp816xPowerUnit.hp816x_PU_DBM
 
     # properties and methods for the abstract mainframe base class
     @property
@@ -102,19 +101,17 @@ class LSIMainframe(MainframeBase):
         end_nm: int,
         step: float,
         speed: Hp816xSweepSpeed,
-        scans: Hp816xNumberOfScans,
     ) -> tuple[list[list[float]], list[float]]:
-        self.__driver.setSweepSpeed(Hp816xSweepSpeed.hp816x_SPEED_5NM)
-        # TODO:
+        self.__driver.setSweepSpeed(speed)
         num_dp, num_chan = self.__driver.prepareMfLambdaScan(
             self.__power_unit,
-            0,
+            float(power),
             Hp816xOpticalOutputMode.hp816x_HIGHPOW,
             Hp816xNumberOfScans.hp816x_NO_OF_SCANS_1,
             self.detector_number,
-            1520e-9,
-            1570e-9,
-            0.008e-9,
+            int(start_nm) * 1e-9,
+            int(end_nm) * 1e-9,
+            float(step),
         )
         self.__driver.executeMfLambdaScan(num_dp)
         return [
@@ -132,8 +129,14 @@ if __name__ == "__main__":
         "GPIB0::20::INSTR", "TCPIP0::100.65.11.185::5025::SOCKET", reset=True
     )
     cband_setup.enable_laser(True)
-    # for i in range(cband_setup.detector_number):
-    #     print(cband_setup.read(i))
-    result = np.array(cband_setup.sweep())
+    result = np.array(
+        cband_setup.sweep(
+            0,
+            1520,
+            1570,
+            0.008,
+            Hp816xSweepSpeed.hp816x_SPEED_5NM,
+        )
+    )
     print(result.shape)
     cband_setup.enable_laser(False)
