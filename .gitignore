@@ -1,3 +1,6 @@
 *venv*/
 .*/
 *.pyc
+*.app/
+*.build/
+*.dist/
