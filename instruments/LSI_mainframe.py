@@ -122,7 +122,7 @@ class LSIMainframe(MainframeBase):
     ) -> tuple[list[list[float]], list[float]]:
         self.__driver.setSweepSpeed(speed)
         num_dp, num_chan = self.__driver.prepareMfLambdaScan(
-            self.__power_unit,
+            Hp816xPowerUnit.hp816x_PU_DBM,
             float(power),
             Hp816xOpticalOutputMode.hp816x_HIGHPOW,
             Hp816xNumberOfScans.hp816x_NO_OF_SCANS_1,
@@ -142,19 +142,20 @@ class LSIMainframe(MainframeBase):
 
 if __name__ == "__main__":
     import numpy as np
+    from matplotlib import pyplot as plt
 
     cband_setup = LSIMainframe(
         "GPIB0::20::INSTR", "TCPIP0::100.65.11.185::5025::SOCKET", reset=True
     )
+
     cband_setup.enable_laser(True)
-    result = np.array(
-        cband_setup.sweep(
-            0,
-            1520,
-            1570,
-            0.008,
-            Hp816xSweepSpeed.hp816x_SPEED_5NM,
-        )
-    )
-    print(result.shape)
+    result = cband_setup.sweep(0, 1564, 1580, 0.008, Hp816xSweepSpeed.hp816x_SPEED_5NM)
+
+    power = np.array(result[0])
+    wavelength = np.array(result[1])
+    print([i for i in power[0][:100]])
+    plt.plot(power[0])
+    plt.show()
+    print(power.shape)
+    # print(wavelength.shape)
     cband_setup.enable_laser(False)
