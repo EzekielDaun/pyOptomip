@@ -1,7 +1,7 @@
 from typing import Optional
 
 from interface.abstract_mainframe import MainframeBase
-from lib.hp816x_driver import (
+from hp816x import (
     Hp816xDriver,
     Hp816xModel,
     Hp816xSweepSpeed,
